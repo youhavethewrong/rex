@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate clap;
+extern crate rex;
 
 use clap::{App, Arg};
+use rex::build_format;
 use std::cmp::max;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -34,22 +36,12 @@ fn main() {
     let data_path: String = matches.value_of("data").map(|s| s.to_owned()).unwrap();
     let format_path: String = matches.value_of("format").map(|s| s.to_owned()).unwrap();
 
-    let mut format_fields = Vec::new();
-
     let format_file = File::open(format_path).unwrap();
-    for line in BufReader::new(format_file).lines() {
-        if let Ok(l) = line {
-            let mut s = l.split(',');
-            let first_field = s.next();
-            let second_field = s.next();
-            match (first_field, second_field) {
-                    (Some(ff), Some(sf)) => {
-                        format_fields.push((ff.to_string(), sf.to_string().parse::<usize>().unwrap()));
-                    }
-                    _ => println!("Ignoring malformed format line '{}'. Format lines must be in the format <FIELD,LENGTH>.", l),
-                }
-        }
-    }
+    let format_lines = BufReader::new(format_file)
+        .lines()
+        .map(|l| l.unwrap())
+        .collect();
+    let format_fields = build_format(format_lines);
 
     let longest_field_name_len = format_fields.iter().fold(0, |acc, f| max(acc, f.0.len()));
     let total_field_size = format_fields.iter().fold(0, |acc, f| acc + f.1);
